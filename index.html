@@ -182,6 +182,31 @@ footer{text-align:center;color:var(--muted);font-size:.85rem;padding:0 20px 100p
   -webkit-mask-image:var(--wm-img);mask-image:var(--wm-img);
   -webkit-mask-position:center;mask-position:center;-webkit-mask-size:contain;mask-size:contain;
   -webkit-mask-repeat:no-repeat;mask-repeat:no-repeat}
+/* ---- Promos del día ---- */
+.promos{display:flex;gap:14px;overflow-x:auto;scroll-snap-type:x mandatory;padding:12px 2px 6px;scrollbar-width:thin}
+.promo{flex:0 0 min(78%,280px);scroll-snap-align:start;background:var(--surface);border:1px solid var(--line);border-radius:14px;overflow:hidden;display:flex;flex-direction:column}
+.promo img{width:100%;height:auto;display:block;background:var(--line)}
+.promo-body{padding:12px 14px 14px;display:flex;flex-direction:column;gap:4px;flex:1}
+.promo-body h3{margin:0;font-size:1.05rem}
+.promo-body .desc{margin:0;color:var(--muted);font-size:.9rem}
+.promo .days{font-size:.82rem;color:var(--muted);font-weight:600}
+.promo-foot{display:flex;justify-content:space-between;align-items:center;gap:10px;margin-top:8px}
+.promo-foot .price{margin:0;font-size:1.15rem}
+.pcount{font-size:.85rem;font-weight:700;color:var(--price);min-height:1.2em}
+/* ---- Administrador ---- */
+.admin{background:var(--surface);border:2px solid var(--blue);border-radius:16px;padding:18px;margin-top:20px}
+.adm-head{display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap}
+.admin h2{font-family:var(--brush);font-weight:400;font-size:1.5rem;margin:0}
+.admin h3{margin:20px 0 6px;font-size:1.05rem}
+.adm-prev{display:block;max-width:160px;border-radius:10px;margin-top:10px;border:1px solid var(--line)}
+.adm-list{list-style:none;margin:0;padding:0}
+.adm-list li{display:grid;grid-template-columns:56px 1fr;gap:12px;padding:12px 0;border-bottom:1px dashed var(--line);align-items:center}
+.adm-list img{width:56px;height:80px;object-fit:cover;border-radius:8px;border:1px solid var(--line)}
+.adm-list .meta{font-size:.85rem;color:var(--muted)}
+.adm-list .acts{display:flex;gap:6px;flex-wrap:wrap;margin-top:6px}
+.adm-list .acts button{border:1px solid var(--line);background:var(--bg);border-radius:999px;padding:5px 12px;font-weight:600;font-size:.85rem;cursor:pointer}
+.adm-list .acts button.danger{border-color:var(--warn);color:var(--warn)}
+.tag-on{color:#1F8A4C;font-weight:700}.tag-off{color:var(--warn);font-weight:700}
 </style>
 </head>
 <body>
@@ -642,6 +667,7 @@ function update(){
   $("barCount").textContent = `Ver pedido (${t.count})`;
   $("barTotal").textContent = clp(t.total);
   $("error").textContent = "";
+  if(window.promoCounts) window.promoCounts();
 }
 
 function buildMessage(){
@@ -728,5 +754,216 @@ document.querySelectorAll('input[name="entrega"],input[name="pago"]').forEach(r 
 ["nombre","telefono","direccion"].forEach(k => $(k).value = storeGet("nagoya_"+k));
 renderStatic(); update();
 </script>
+<script type="module">
+/* =====================================================================
+   PROMOS DEL DÍA — conectado a Firebase
+   1) Pega aquí el firebaseConfig de tu proyecto (Configuración del proyecto → Tus apps)
+   ===================================================================== */
+const firebaseConfig = {
+  apiKey: "AIzaSyCTFlFssCa55Zlz4SpxYKP80479gok_w1s",
+  authDomain: "nagoyasushi2k26.firebaseapp.com",
+  projectId: "nagoyasushi2k26",
+  storageBucket: "nagoyasushi2k26.firebasestorage.app",
+  messagingSenderId: "193334156106",
+  appId: "1:193334156106:web:559d28e8361780221a7fb3",
+  measurementId: "G-LHGF44N19W"
+};
+/* ===================================================================== */
+
+import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
+import { getAuth, signInWithEmailAndPassword, onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
+import { getFirestore, collection, query, where, onSnapshot, addDoc, updateDoc, deleteDoc, doc, serverTimestamp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
+
+const DIAS = ["Dom","Lun","Mar","Mié","Jue","Vie","Sáb"], ORDEN = [1,2,3,4,5,6,0];
+let publicas = [], todas = [], user = null, editId = null, imgData = null, stopAdmin = null;
+
+// --- estructura en la página ---
+$("menu").insertAdjacentHTML("afterbegin", `
+  <section class="sec" id="promoSec" hidden>
+    <h2 class="sec-head" id="c-promos">Promos del día</h2>
+    <p class="sec-note">Ofertas válidas hoy. Desliza para ver todas.</p>
+    <div class="promos" id="promoList"></div>
+  </section>`);
+$("cats").insertAdjacentHTML("afterbegin", `<button class="cat" id="promoChip" data-target="c-promos" hidden>🔥 Promos del día</button>`);
+document.querySelector(".hero").insertAdjacentHTML("afterend", `<div class="wrap"><section class="admin" id="adminBox" hidden></section></div>`);
+
+if (firebaseConfig.apiKey === "PEGA_AQUI") {
+  console.warn("Promos del día: falta pegar el firebaseConfig.");
+} else {
+  const app = initializeApp(firebaseConfig);
+  const auth = getAuth(app), db = getFirestore(app);
+  const col = collection(db, "promos");
+
+  const diasTxt = d => {
+    if (d.length === 7) return "Todos los días";
+    const idx = ORDEN.filter(x => d.includes(x)), pos = idx.map(x => ORDEN.indexOf(x));
+    const seguidos = pos.every((p, i) => i === 0 || p === pos[i-1] + 1);
+    return (seguidos && idx.length > 2) ? `${DIAS[idx[0]]} a ${DIAS[idx[idx.length-1]]}` : idx.map(x => DIAS[x]).join(", ");
+  };
+  const hoy = () => new Date().getDay();
+  const ms = p => p.creado && p.creado.toMillis ? p.creado.toMillis() : Date.now();
+  const leer = snap => snap.docs.map(d => ({ id: d.id, ...d.data() })).sort((a, b) => ms(b) - ms(a));
+
+  // --- vista pública: solo promos activas, filtradas por el día de hoy ---
+  onSnapshot(query(col, where("activa", "==", true)), snap => { publicas = leer(snap); renderPublic(); },
+    err => console.error("Promos:", err));
+
+  function renderPublic() {
+    const v = publicas.filter(p => Array.isArray(p.dias) && p.dias.includes(hoy()));
+    $("promoSec").hidden = !v.length; $("promoChip").hidden = !v.length;
+    $("promoList").innerHTML = v.map(p => `
+      <article class="promo">
+        <img src="${p.img}" alt="${esc(p.nombre)}" loading="lazy">
+        <div class="promo-body">
+          <h3>${esc(p.nombre)}</h3>
+          ${p.desc ? `<p class="desc">${esc(p.desc)}</p>` : ""}
+          <span class="days">Válida: ${diasTxt(p.dias)}</span>
+          <div class="promo-foot"><strong class="price">${clp(p.precio)}</strong><button type="button" class="btn" data-promo="${p.id}">+ Agregar</button></div>
+          <span class="pcount" id="pc-${p.id}"></span>
+        </div>
+      </article>`).join("");
+    window.promoCounts();
+  }
+  window.promoCounts = () => publicas.forEach(p => {
+    const el = $("pc-" + p.id); if (!el) return;
+    const l = cart.find(x => x.key === "promo|" + p.id);
+    el.textContent = l ? `${l.q} en tu pedido` : "";
+  });
+  $("promoList").addEventListener("click", e => {
+    const b = e.target.closest("[data-promo]"); if (!b) return;
+    const p = publicas.find(x => x.id === b.dataset.promo); if (!p) return;
+    setQty("promo|" + p.id, 1, { nombre: "Promo del día: " + p.nombre, detalle: "", precio: p.precio });
+  });
+
+  // --- acceso oculto: 5 toques al logo, o #admin al final del link ---
+  let taps = 0, t0 = 0;
+  document.querySelector(".logo").addEventListener("click", () => {
+    const n = Date.now(); if (n - t0 > 2500) taps = 0; t0 = n;
+    if (++taps >= 5) { taps = 0; openAdmin(); }
+  });
+  function openAdmin() { $("adminBox").hidden = false; renderAdmin(); $("adminBox").scrollIntoView({ block: "start" }); }
+
+  onAuthStateChanged(auth, u => {
+    user = u;
+    if (stopAdmin) { stopAdmin(); stopAdmin = null; }
+    if (u) stopAdmin = onSnapshot(col, snap => { todas = leer(snap); if (!$("adminBox").hidden) renderList(); });
+    if (!$("adminBox").hidden) renderAdmin();
+  });
+
+  function compress(file) {
+    return new Promise((res, rej) => {
+      const r = new FileReader();
+      r.onload = () => { const im = new Image();
+        im.onload = () => { const sc = Math.min(1, 900 / Math.max(im.width, im.height));
+          const c = document.createElement("canvas"); c.width = Math.round(im.width * sc); c.height = Math.round(im.height * sc);
+          c.getContext("2d").drawImage(im, 0, 0, c.width, c.height); res(c.toDataURL("image/jpeg", .78)); };
+        im.onerror = rej; im.src = r.result; };
+      r.onerror = rej; r.readAsDataURL(file);
+    });
+  }
+
+  function renderAdmin() {
+    const box = $("adminBox");
+    if (!user) {
+      box.innerHTML = `
+        <div class="adm-head"><h2>Acceso administrador</h2><button type="button" class="mixbtn" id="admClose">Cerrar</button></div>
+        <label class="field">Correo<input type="email" id="admMail" autocomplete="username"></label>
+        <label class="field">Contraseña<input type="password" id="admPass" autocomplete="current-password"></label>
+        <div class="builder-foot"><button type="button" class="btn" id="admLogin">Entrar</button></div>
+        <p class="bmsg err" id="admErr"></p>`;
+      const go = async () => {
+        $("admErr").textContent = "Ingresando…";
+        try { await signInWithEmailAndPassword(auth, $("admMail").value.trim(), $("admPass").value); }
+        catch (e) {
+          $("admErr").textContent = e.code === "auth/too-many-requests"
+            ? "Demasiados intentos. Espera unos minutos." : "Correo o contraseña incorrectos.";
+        }
+      };
+      $("admLogin").onclick = go; $("admPass").onkeydown = e => { if (e.key === "Enter") go(); };
+      $("admClose").onclick = () => { box.hidden = true; };
+      return;
+    }
+    box.innerHTML = `
+      <div class="adm-head"><h2>Promos del día</h2><div style="display:flex;gap:6px"><button type="button" class="mixbtn" id="admHide">Ocultar</button><button type="button" class="mixbtn" id="admOut">Cerrar sesión</button></div></div>
+      <p class="hint">Sesión: ${esc(user.email || "")}. Lo que guardes aquí lo ven todos los clientes al instante.</p>
+      <h3 id="fTitle">Nueva promo</h3>
+      <label class="field">Imagen<input type="file" id="pImg" accept="image/*"></label>
+      <img id="pPrev" class="adm-prev" alt="" hidden>
+      <label class="field">Nombre<input id="pNom" maxlength="80" placeholder="Ej: Mix Acevichados"></label>
+      <label class="field">Descripción <small>(opcional)</small><textarea id="pDesc" maxlength="300" placeholder="Qué incluye la promo"></textarea></label>
+      <label class="field">Precio<input id="pPre" inputmode="numeric" placeholder="Ej: 23990"></label>
+      <fieldset><legend>Días en que se muestra</legend>
+        <div class="opts">${ORDEN.map(d => `<label class="opt"><input type="checkbox" name="pDia" value="${d}"><span>${DIAS[d]}</span></label>`).join("")}</div>
+      </fieldset>
+      <label class="chk"><input type="checkbox" id="pAct" checked> Activa</label>
+      <div class="builder-foot"><button type="button" class="btn" id="pSave">Guardar promo</button><button type="button" class="mixbtn" id="pCancel" hidden>Cancelar edición</button></div>
+      <p class="bmsg" id="pMsg" role="status"></p>
+      <h3>Promos cargadas</h3>
+      <ul class="adm-list" id="admList"></ul>`;
+    $("admHide").onclick = () => { box.hidden = true; };
+    $("admOut").onclick = async () => { await signOut(auth); box.hidden = true; };
+    $("pImg").onchange = async e => {
+      const f = e.target.files[0]; if (!f) return;
+      $("pMsg").classList.remove("err"); $("pMsg").textContent = "Procesando imagen…";
+      try { imgData = await compress(f); $("pPrev").src = imgData; $("pPrev").hidden = false; $("pMsg").textContent = ""; }
+      catch (err) { $("pMsg").classList.add("err"); $("pMsg").textContent = "No se pudo leer la imagen."; }
+    };
+    $("pSave").onclick = async () => {
+      const msg = $("pMsg"); msg.classList.add("err");
+      const nombre = $("pNom").value.trim(), precio = Number($("pPre").value.replace(/\D/g, ""));
+      const dias = [...document.querySelectorAll('input[name="pDia"]:checked')].map(x => Number(x.value));
+      if (!imgData) return msg.textContent = "Sube la imagen de la promo.";
+      if (!nombre) return msg.textContent = "Escribe el nombre de la promo.";
+      if (!precio) return msg.textContent = "Escribe el precio.";
+      if (!dias.length) return msg.textContent = "Elige al menos un día.";
+      const data = { nombre, desc: $("pDesc").value.trim(), precio, dias, activa: $("pAct").checked, img: imgData, actualizado: serverTimestamp() };
+      $("pSave").disabled = true; msg.classList.remove("err"); msg.textContent = "Guardando…";
+      try {
+        if (editId) await updateDoc(doc(db, "promos", editId), data);
+        else await addDoc(col, { ...data, creado: serverTimestamp() });
+        msg.textContent = editId ? "Promo actualizada." : "Promo guardada y publicada.";
+        resetForm();
+      } catch (e) {
+        console.error(e); msg.classList.add("err");
+        msg.textContent = e.code === "permission-denied" ? "Sin permiso: revisa las reglas de Firestore y el UID del administrador." : "No se pudo guardar. Revisa tu conexión.";
+      } finally { $("pSave").disabled = false; }
+    };
+    $("pCancel").onclick = () => { resetForm(); $("pMsg").textContent = ""; };
+    renderList();
+  }
+  function resetForm() {
+    editId = null; imgData = null;
+    ["pNom", "pDesc", "pPre"].forEach(k => $(k).value = ""); $("pImg").value = "";
+    $("pPrev").hidden = true; $("pAct").checked = true;
+    document.querySelectorAll('input[name="pDia"]').forEach(x => x.checked = false);
+    $("fTitle").textContent = "Nueva promo"; $("pCancel").hidden = true;
+  }
+  function renderList() {
+    const ul = $("admList"); if (!ul) return;
+    ul.innerHTML = todas.length ? todas.map(p => `
+      <li><img src="${p.img}" alt="">
+        <div><strong>${esc(p.nombre)}</strong>
+          <div class="meta">${clp(p.precio)} · ${diasTxt(p.dias || [])} · <span class="${p.activa ? "tag-on" : "tag-off"}">${p.activa ? "Activa" : "Pausada"}</span>${p.activa && (p.dias || []).includes(hoy()) ? " · visible hoy" : ""}</div>
+          <div class="acts"><button type="button" data-a="tog" data-id="${p.id}">${p.activa ? "Pausar" : "Activar"}</button><button type="button" data-a="edit" data-id="${p.id}">Editar</button><button type="button" class="danger" data-a="del" data-id="${p.id}">Borrar</button></div>
+        </div></li>`).join("") : `<li style="display:block" class="meta">Aún no hay promos.</li>`;
+    ul.onclick = async e => {
+      const b = e.target.closest("button[data-a]"); if (!b) return;
+      const p = todas.find(x => x.id === b.dataset.id); if (!p) return;
+      try {
+        if (b.dataset.a === "tog") await updateDoc(doc(db, "promos", p.id), { activa: !p.activa, actualizado: serverTimestamp() });
+        if (b.dataset.a === "del" && confirm(`¿Borrar la promo "${p.nombre}"?`)) await deleteDoc(doc(db, "promos", p.id));
+      } catch (err) { alert("No se pudo completar la acción. Revisa tu conexión o los permisos."); }
+      if (b.dataset.a === "edit") {
+        editId = p.id; imgData = p.img; $("pPrev").src = p.img; $("pPrev").hidden = false;
+        $("pNom").value = p.nombre; $("pDesc").value = p.desc || ""; $("pPre").value = p.precio; $("pAct").checked = p.activa;
+        document.querySelectorAll('input[name="pDia"]').forEach(x => x.checked = (p.dias || []).includes(Number(x.value)));
+        $("fTitle").textContent = "Editar promo"; $("pCancel").hidden = false; $("fTitle").scrollIntoView({ block: "center" });
+      }
+    };
+  }
+  if (location.hash === "#admin") openAdmin();
+}
+</script>
+
 </body>
 </html>
