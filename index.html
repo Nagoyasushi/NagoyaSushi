@@ -210,6 +210,21 @@ footer{text-align:center;color:var(--muted);font-size:.85rem;padding:0 20px 100p
 .logo{cursor:pointer;touch-action:manipulation;-webkit-tap-highlight-color:transparent;-webkit-user-select:none;user-select:none;-webkit-touch-callout:none}
 .adm-link{margin-top:10px;border:0;background:none;color:var(--muted);font-size:.8rem;text-decoration:underline;text-underline-offset:3px;cursor:pointer;opacity:.7;padding:6px 10px}
 .adm-link:hover{opacity:1}
+/* Evita que la fila de promos ensanche la página */
+#menu,.main>main{min-width:0}
+.promos{max-width:100%}
+body{overflow-x:clip}
+/* Carrusel de promos: deslizar fácil */
+.promo-wrap{position:relative}
+.promos{scroll-snap-type:x mandatory;-webkit-overflow-scrolling:touch;overscroll-behavior-x:contain;scrollbar-width:none;cursor:grab}
+.promos::-webkit-scrollbar{display:none}
+.promos.drag{scroll-snap-type:none;cursor:grabbing}
+.promo img{-webkit-user-drag:none;-webkit-user-select:none;user-select:none;pointer-events:none}
+.pnav{position:absolute;top:38%;width:44px;height:44px;border-radius:50%;border:1px solid var(--line);background:var(--surface);color:var(--ink);font-size:1.6rem;line-height:1;display:flex;align-items:center;justify-content:center;cursor:pointer;box-shadow:0 4px 14px rgba(0,0,0,.18);z-index:2;padding:0 0 3px}
+.pnav.prev{left:-6px}.pnav.next{right:-6px}
+.pdots{display:flex;justify-content:center;gap:6px;margin-top:10px}
+.pdots button{width:8px;height:8px;border-radius:999px;border:0;padding:0;background:var(--line);cursor:pointer;transition:width .2s,background .2s}
+.pdots button[aria-current="true"]{width:22px;background:var(--blue)}
 </style>
 </head>
 <body>
@@ -807,8 +822,13 @@ const pintarEstado = () => { const el = document.getElementById("admEstado"); if
 $("menu").insertAdjacentHTML("afterbegin", `
   <section class="sec" id="promoSec" hidden>
     <h2 class="sec-head" id="c-promos">Promos del día</h2>
-    <p class="sec-note">Ofertas válidas hoy. Desliza para ver todas.</p>
-    <div class="promos" id="promoList"></div>
+    <p class="sec-note">Ofertas válidas hoy. Desliza o usa las flechas para ver todas →</p>
+    <div class="promo-wrap">
+      <button type="button" class="pnav prev" id="pvPrev" aria-label="Promo anterior" hidden>‹</button>
+      <div class="promos" id="promoList"></div>
+      <button type="button" class="pnav next" id="pvNext" aria-label="Siguiente promo" hidden>›</button>
+    </div>
+    <div class="pdots" id="pvDots"></div>
   </section>`);
 $("cats").insertAdjacentHTML("afterbegin", `<button class="cat" id="promoChip" data-target="c-promos" hidden>🔥 Promos del día</button>`);
 
@@ -852,7 +872,33 @@ if (firebaseConfig.apiKey === "PEGA_AQUI") {
         </div>
       </article>`).join("");
     window.promoCounts();
+    $("pvDots").innerHTML = v.length > 1 ? v.map((p, i) => `<button type="button" data-i="${i}" aria-label="Ver promo ${i+1}"></button>`).join("") : "";
+    $("promoList").scrollLeft = 0; carrusel();
   }
+
+  // --- carrusel: flechas, puntos y arrastre con mouse ---
+  const lista = $("promoList");
+  const paso = () => { const c = lista.querySelector(".promo"); return c ? c.getBoundingClientRect().width + 14 : lista.clientWidth; };
+  function carrusel() {
+    const n = lista.querySelectorAll(".promo").length, i = Math.round(lista.scrollLeft / paso());
+    const fin = lista.scrollLeft + lista.clientWidth >= lista.scrollWidth - 4;
+    $("pvPrev").hidden = n < 2 || lista.scrollLeft < 4;
+    $("pvNext").hidden = n < 2 || fin;
+    $("pvDots").querySelectorAll("button").forEach((d, k) => d.setAttribute("aria-current", String(k === (fin ? n - 1 : i))));
+  }
+  lista.addEventListener("scroll", () => requestAnimationFrame(carrusel), { passive: true });
+  window.addEventListener("resize", carrusel);
+  $("pvPrev").onclick = () => lista.scrollBy({ left: -paso(), behavior: "smooth" });
+  $("pvNext").onclick = () => lista.scrollBy({ left: paso(), behavior: "smooth" });
+  $("pvDots").addEventListener("click", e => { const d = e.target.closest("button[data-i]"); if (d) lista.scrollTo({ left: Number(d.dataset.i) * paso(), behavior: "smooth" }); });
+  let dx = null, sl = 0, movido = false;
+  lista.addEventListener("pointerdown", e => { if (e.pointerType !== "mouse" || e.target.closest("button")) return; dx = e.clientX; sl = lista.scrollLeft; movido = false; lista.classList.add("drag"); });
+  window.addEventListener("pointermove", e => { if (dx === null) return; if (Math.abs(e.clientX - dx) > 4) movido = true; lista.scrollLeft = sl - (e.clientX - dx); });
+  window.addEventListener("pointerup", () => {
+    if (dx === null) return; dx = null; lista.classList.remove("drag");
+    lista.scrollTo({ left: Math.round(lista.scrollLeft / paso()) * paso(), behavior: "smooth" });
+  });
+  lista.addEventListener("click", e => { if (movido) { e.stopPropagation(); e.preventDefault(); movido = false; } }, true);
   window.promoCounts = () => publicas.forEach(p => {
     const el = $("pc-" + p.id); if (!el) return;
     const l = cart.find(x => x.key === "promo|" + p.id);
