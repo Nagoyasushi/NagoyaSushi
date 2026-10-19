@@ -207,6 +207,7 @@ footer{text-align:center;color:var(--muted);font-size:.85rem;padding:0 20px 100p
 .adm-list .acts button{border:1px solid var(--line);background:var(--bg);border-radius:999px;padding:5px 12px;font-weight:600;font-size:.85rem;cursor:pointer}
 .adm-list .acts button.danger{border-color:var(--warn);color:var(--warn)}
 .tag-on{color:#1F8A4C;font-weight:700}.tag-off{color:var(--warn);font-weight:700}
+.logo{cursor:pointer;touch-action:manipulation;-webkit-tap-highlight-color:transparent;-webkit-user-select:none;user-select:none;-webkit-touch-callout:none}
 </style>
 </head>
 <body>
@@ -754,6 +755,27 @@ document.querySelectorAll('input[name="entrega"],input[name="pago"]').forEach(r 
 ["nombre","telefono","direccion"].forEach(k => $(k).value = storeGet("nagoya_"+k));
 renderStatic(); update();
 </script>
+<script>
+/* Acceso oculto al administrador: 5 toques al logo o #admin en el link */
+(() => {
+  document.querySelector(".hero").insertAdjacentHTML("afterend", `<div class="wrap"><section class="admin" id="adminBox" hidden></section></div>`);
+  const abrir = () => {
+    if (window.nagoyaAdmin) return window.nagoyaAdmin();
+    const box = document.getElementById("adminBox"); box.hidden = false;
+    box.innerHTML = `<div class="adm-head"><h2>Administrador</h2><button type="button" class="mixbtn" onclick="this.closest('section').hidden=true">Cerrar</button></div>
+      <p class="bmsg err">No se pudo cargar la conexión con Firebase. Revisa tu internet y recarga la página.</p>`;
+    box.scrollIntoView({ block: "start" });
+  };
+  let taps = 0, t0 = 0;
+  document.querySelector(".logo").addEventListener("click", () => {
+    const n = Date.now(); if (n - t0 > 3000) taps = 0; t0 = n;
+    if (++taps >= 5) { taps = 0; abrir(); }
+  });
+  const porHash = () => { if (location.hash === "#admin") abrir(); };
+  window.addEventListener("hashchange", porHash);
+  window.addEventListener("load", () => setTimeout(porHash, 600));
+})();
+</script>
 <script type="module">
 /* =====================================================================
    PROMOS DEL DÍA — conectado a Firebase
@@ -785,7 +807,6 @@ $("menu").insertAdjacentHTML("afterbegin", `
     <div class="promos" id="promoList"></div>
   </section>`);
 $("cats").insertAdjacentHTML("afterbegin", `<button class="cat" id="promoChip" data-target="c-promos" hidden>🔥 Promos del día</button>`);
-document.querySelector(".hero").insertAdjacentHTML("afterend", `<div class="wrap"><section class="admin" id="adminBox" hidden></section></div>`);
 
 if (firebaseConfig.apiKey === "PEGA_AQUI") {
   console.warn("Promos del día: falta pegar el firebaseConfig.");
@@ -836,12 +857,8 @@ if (firebaseConfig.apiKey === "PEGA_AQUI") {
   });
 
   // --- acceso oculto: 5 toques al logo, o #admin al final del link ---
-  let taps = 0, t0 = 0;
-  document.querySelector(".logo").addEventListener("click", () => {
-    const n = Date.now(); if (n - t0 > 2500) taps = 0; t0 = n;
-    if (++taps >= 5) { taps = 0; openAdmin(); }
-  });
   function openAdmin() { $("adminBox").hidden = false; renderAdmin(); $("adminBox").scrollIntoView({ block: "start" }); }
+  window.nagoyaAdmin = openAdmin;
 
   onAuthStateChanged(auth, u => {
     user = u;
@@ -876,7 +893,9 @@ if (firebaseConfig.apiKey === "PEGA_AQUI") {
         try { await signInWithEmailAndPassword(auth, $("admMail").value.trim(), $("admPass").value); }
         catch (e) {
           $("admErr").textContent = e.code === "auth/too-many-requests"
-            ? "Demasiados intentos. Espera unos minutos." : "Correo o contraseña incorrectos.";
+            ? "Demasiados intentos. Espera unos minutos."
+            : (e.code === "auth/invalid-credential" || e.code === "auth/wrong-password" || e.code === "auth/user-not-found")
+              ? "Correo o contraseña incorrectos." : "No se pudo iniciar sesión (" + e.code + ").";
         }
       };
       $("admLogin").onclick = go; $("admPass").onkeydown = e => { if (e.key === "Enter") go(); };
@@ -961,7 +980,6 @@ if (firebaseConfig.apiKey === "PEGA_AQUI") {
       }
     };
   }
-  if (location.hash === "#admin") openAdmin();
 }
 </script>
 
