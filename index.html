@@ -208,6 +208,8 @@ footer{text-align:center;color:var(--muted);font-size:.85rem;padding:0 20px 100p
 .adm-list .acts button.danger{border-color:var(--warn);color:var(--warn)}
 .tag-on{color:#1F8A4C;font-weight:700}.tag-off{color:var(--warn);font-weight:700}
 .logo{cursor:pointer;touch-action:manipulation;-webkit-tap-highlight-color:transparent;-webkit-user-select:none;user-select:none;-webkit-touch-callout:none}
+.adm-link{margin-top:10px;border:0;background:none;color:var(--muted);font-size:.8rem;text-decoration:underline;text-underline-offset:3px;cursor:pointer;opacity:.7;padding:6px 10px}
+.adm-link:hover{opacity:1}
 </style>
 </head>
 <body>
@@ -299,7 +301,7 @@ footer{text-align:center;color:var(--muted);font-size:.85rem;padding:0 20px 100p
 </div>
 
 <div class="bar" id="bar"><button type="button" id="openSheet"><span id="barCount">Ver pedido</span><span id="barTotal">$0</span></button></div>
-<footer>Nagoya Sushi · Carta 2026</footer>
+<footer>Nagoya Sushi · Carta 2026<br><button type="button" id="admLink" class="adm-link">Iniciar sesión</button></footer>
 
 <script>
 /* =========================================================
@@ -758,7 +760,7 @@ renderStatic(); update();
 <script>
 /* Acceso oculto al administrador: 5 toques al logo o #admin en el link */
 (() => {
-  document.querySelector(".hero").insertAdjacentHTML("afterend", `<div class="wrap"><section class="admin" id="adminBox" hidden></section></div>`);
+  document.querySelector("footer").insertAdjacentHTML("beforebegin", `<div class="wrap" style="padding-bottom:24px"><section class="admin" id="adminBox" hidden></section></div>`);
   const abrir = () => {
     if (window.nagoyaAdmin) return window.nagoyaAdmin();
     const box = document.getElementById("adminBox"); box.hidden = false;
@@ -771,6 +773,7 @@ renderStatic(); update();
     const n = Date.now(); if (n - t0 > 3000) taps = 0; t0 = n;
     if (++taps >= 5) { taps = 0; abrir(); }
   });
+  document.getElementById("admLink").addEventListener("click", abrir);
   const porHash = () => { if (location.hash === "#admin") abrir(); };
   window.addEventListener("hashchange", porHash);
   window.addEventListener("load", () => setTimeout(porHash, 600));
@@ -797,7 +800,8 @@ import { getAuth, signInWithEmailAndPassword, onAuthStateChanged, signOut } from
 import { getFirestore, collection, query, where, onSnapshot, addDoc, updateDoc, deleteDoc, doc, serverTimestamp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
 
 const DIAS = ["Dom","Lun","Mar","Mié","Jue","Vie","Sáb"], ORDEN = [1,2,3,4,5,6,0];
-let publicas = [], todas = [], user = null, editId = null, imgData = null, stopAdmin = null;
+let publicas = [], todas = [], user = null, editId = null, imgData = null, stopAdmin = null, estado = "Conectando con Firebase…";
+const pintarEstado = () => { const el = document.getElementById("admEstado"); if (el) el.textContent = estado; };
 
 // --- estructura en la página ---
 $("menu").insertAdjacentHTML("afterbegin", `
@@ -826,8 +830,12 @@ if (firebaseConfig.apiKey === "PEGA_AQUI") {
   const leer = snap => snap.docs.map(d => ({ id: d.id, ...d.data() })).sort((a, b) => ms(b) - ms(a));
 
   // --- vista pública: solo promos activas, filtradas por el día de hoy ---
-  onSnapshot(query(col, where("activa", "==", true)), snap => { publicas = leer(snap); renderPublic(); },
-    err => console.error("Promos:", err));
+  onSnapshot(query(col, where("activa", "==", true)), snap => {
+      publicas = leer(snap); renderPublic();
+      const hoyN = publicas.filter(p => Array.isArray(p.dias) && p.dias.includes(hoy())).length;
+      estado = `Conexión OK · ${publicas.length} promo(s) activa(s) · ${hoyN} visible(s) hoy (${DIAS[hoy()]}).`; pintarEstado();
+    },
+    err => { console.error("Promos:", err); estado = "Error al leer las promos: " + err.code + ". Revisa la pestaña Reglas de Firestore."; pintarEstado(); });
 
   function renderPublic() {
     const v = publicas.filter(p => Array.isArray(p.dias) && p.dias.includes(hoy()));
@@ -863,7 +871,8 @@ if (firebaseConfig.apiKey === "PEGA_AQUI") {
   onAuthStateChanged(auth, u => {
     user = u;
     if (stopAdmin) { stopAdmin(); stopAdmin = null; }
-    if (u) stopAdmin = onSnapshot(col, snap => { todas = leer(snap); if (!$("adminBox").hidden) renderList(); });
+    if (u) stopAdmin = onSnapshot(col, snap => { todas = leer(snap); if (!$("adminBox").hidden) renderList(); },
+      err => { estado = "Error al leer (administrador): " + err.code; pintarEstado(); });
     if (!$("adminBox").hidden) renderAdmin();
   });
 
@@ -905,6 +914,7 @@ if (firebaseConfig.apiKey === "PEGA_AQUI") {
     box.innerHTML = `
       <div class="adm-head"><h2>Promos del día</h2><div style="display:flex;gap:6px"><button type="button" class="mixbtn" id="admHide">Ocultar</button><button type="button" class="mixbtn" id="admOut">Cerrar sesión</button></div></div>
       <p class="hint">Sesión: ${esc(user.email || "")}. Lo que guardes aquí lo ven todos los clientes al instante.</p>
+      <p class="bmsg" id="admEstado"></p>
       <h3 id="fTitle">Nueva promo</h3>
       <label class="field">Imagen<input type="file" id="pImg" accept="image/*"></label>
       <img id="pPrev" class="adm-prev" alt="" hidden>
@@ -944,11 +954,11 @@ if (firebaseConfig.apiKey === "PEGA_AQUI") {
         resetForm();
       } catch (e) {
         console.error(e); msg.classList.add("err");
-        msg.textContent = e.code === "permission-denied" ? "Sin permiso: revisa las reglas de Firestore y el UID del administrador." : "No se pudo guardar. Revisa tu conexión.";
+        msg.textContent = e.code === "permission-denied" ? "Sin permiso: revisa las reglas de Firestore y el UID del administrador." : "No se pudo guardar (" + (e.code || e.message) + ").";
       } finally { $("pSave").disabled = false; }
     };
     $("pCancel").onclick = () => { resetForm(); $("pMsg").textContent = ""; };
-    renderList();
+    renderList(); pintarEstado();
   }
   function resetForm() {
     editId = null; imgData = null;
