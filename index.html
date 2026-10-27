@@ -263,7 +263,24 @@ body{overflow-x:clip}
 .puntos-saldo small{color:var(--muted)}
 /* ---- Pedidos activos (administrador) ---- */
 .pa-sum{display:flex;flex-wrap:wrap;gap:8px 18px;padding:12px 14px;border-radius:12px;background:var(--blue-soft);font-size:.92rem;margin:6px 0 12px}
-.pa-list{list-style:none;margin:0;padding:0;display:grid;gap:12px}
+.pa-list{list-style:none;margin:0;padding:4px 2px 10px;display:flex;gap:12px;overflow-x:auto;scroll-snap-type:x mandatory;-webkit-overflow-scrolling:touch;overscroll-behavior-x:contain}
+.pa-list>.pa{flex:0 0 min(88%,360px);scroll-snap-align:start;display:flex;flex-direction:column}
+@media (min-width:921px){.pa-list{display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));overflow:visible}}
+.pa-dia{display:flex;justify-content:space-between;align-items:baseline;gap:8px;margin:18px 0 4px;font-size:1rem}
+.pa-dia span{font-weight:600;color:var(--muted);font-size:.85rem}
+.pa-dia.atras{color:var(--warn)}
+.pa-swipe{font-size:.8rem;color:var(--muted);margin:0 0 4px}
+.pa-badges{display:flex;gap:6px;flex-wrap:wrap;margin:6px 0}
+.pa-badges span{font-size:.76rem;font-weight:700;border-radius:999px;padding:3px 9px;background:var(--surface);border:1px solid var(--line)}
+.pa-badges .res{background:#FFF3C4;border-color:#E7C64A;color:#4A3B00}
+.pa-det{margin:8px 0 4px;border-top:1px dashed var(--line);border-bottom:1px dashed var(--line);padding:6px 0}
+.pa-det .ln{display:flex;justify-content:space-between;gap:10px;padding:3px 0}
+.pa-det .ln small{display:block;color:var(--muted);font-size:.8rem}
+.pa-tot .ln{display:flex;justify-content:space-between;padding:1px 0;font-size:.88rem}
+.pa-tot .ln.t{font-weight:800;font-size:1.05rem}
+.pa .acts{margin-top:auto;padding-top:10px}
+.res-campos{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:6px}
+.res-campos .field{margin-top:6px}
 .pa{border:1.5px solid var(--line);border-radius:14px;padding:12px 14px;background:var(--bg);font-size:.92rem}
 .pa.tarde{border-color:var(--warn)}
 .pa-top{display:flex;justify-content:space-between;gap:8px;align-items:baseline}
@@ -281,6 +298,14 @@ body{overflow-x:clip}
 .pa .acts button{border-radius:999px;padding:9px 14px;font-weight:700;cursor:pointer;border:1.5px solid var(--line);background:var(--surface);color:var(--ink)}
 .pa .acts .okb{background:#1E9E4A;border-color:#1E9E4A;color:#fff}
 .pa .acts .danger{border-color:var(--warn);color:var(--warn)}
+/* ---- Acceso rápido a la cuenta en la portada ---- */
+.hero-cuenta{display:flex;flex-wrap:wrap;gap:8px 10px;align-items:center;margin-top:16px}
+@media (max-width:640px){.hero-cuenta{justify-content:center}}
+.hero-cuenta button{border-radius:999px;padding:10px 18px;font-weight:800;font-size:.95rem;cursor:pointer;font-family:inherit}
+.hero-cuenta .hc-main{background:#F2F6FA;color:#0F2333;border:0}
+.hero-cuenta .hc-sec{background:transparent;color:#F2F6FA;border:1.5px solid rgba(242,246,250,.6)}
+.hero-cuenta .hc-txt{color:#BFD2E2;font-size:.9rem;font-weight:600}
+.hero-cuenta .hc-txt strong{color:#fff}
 </style>
 </head>
 <body>
@@ -293,6 +318,7 @@ body{overflow-x:clip}
       <div class="estado-bar" id="estadoBar" role="status" aria-live="polite" hidden><button type="button" class="estado-pill" id="estadoLocal" disabled></button><span class="estado-msg" id="estadoMsg"></span></div>
       <h1>Realiza tu pedido aquí</h1>
       <p>Una vez hecho tu pedido, te contactaremos por WhatsApp.</p>
+      <div class="hero-cuenta" id="cuentaHero" hidden></div>
       <ul class="contact">
         <li><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 2a10 10 0 0 0-8.6 15.1L2 22l5-1.3A10 10 0 1 0 12 2zm4.5 12.1c-.2-.1-1.5-.7-1.7-.8s-.4-.1-.6.1-.7.8-.8 1-.3.2-.5.1a6.7 6.7 0 0 1-3.3-2.9c-.3-.4.3-.4.7-1.3.1-.2 0-.3 0-.4l-.8-1.8c-.2-.5-.4-.4-.6-.4h-.5a1 1 0 0 0-.7.3 3 3 0 0 0-.9 2.2 5.2 5.2 0 0 0 1.1 2.7 11.8 11.8 0 0 0 4.5 4c1.7.7 2.3.8 3.2.6a2.7 2.7 0 0 0 1.8-1.2 2.2 2.2 0 0 0 .1-1.3c0-.1-.2-.2-.4-.3z"/></svg><span id="wspText"></span></li>
         <li><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M7 2h10a5 5 0 0 1 5 5v10a5 5 0 0 1-5 5H7a5 5 0 0 1-5-5V7a5 5 0 0 1 5-5zm0 2a3 3 0 0 0-3 3v10a3 3 0 0 0 3 3h10a3 3 0 0 0 3-3V7a3 3 0 0 0-3-3H7zm5 3.5a4.5 4.5 0 1 1 0 9 4.5 4.5 0 0 1 0-9zm0 2a2.5 2.5 0 1 0 0 5 2.5 2.5 0 0 0 0-5zM17.5 6a1 1 0 1 1 0 2 1 1 0 0 1 0-2z"/></svg><a id="igLink" href="#" target="_blank" rel="noopener"></a></li>
@@ -338,7 +364,13 @@ body{overflow-x:clip}
         <label class="choice"><input type="radio" name="hora" value="asap" checked><span>Lo antes posible<small>mín. 45 min aprox.</small></span></label>
         <label class="choice"><input type="radio" name="hora" value="prog"><span>Reservar hora por WhatsApp<small>la coordinamos contigo</small></span></label>
       </div>
-      <p class="hint" id="horaField" hidden>Te escribiremos por WhatsApp para acordar la hora de tu pedido.</p>
+      <div id="horaField" hidden>
+        <div class="res-campos">
+          <label class="field">Día<input type="date" id="resDia"></label>
+          <label class="field">Hora aproximada<input type="time" id="resHora" step="900"></label>
+        </div>
+        <p class="hint">Te confirmaremos por WhatsApp si podemos tenerlo para ese día y hora.</p>
+      </div>
       <select id="horaSel" hidden aria-hidden="true" tabindex="-1"></select>
     </fieldset>
 
@@ -760,7 +792,10 @@ function buildMessage(){
   if($("telefono").value.trim()) L.push(`📞 *Teléfono:* ${$("telefono").value.trim()}`);
   if(entrega()==="delivery"){ L.push(`🛵 *Entrega:* Delivery`, `📍 *Dirección:* ${$("direccion").value.trim()}`); }
   else L.push(`🏪 *Entrega:* Retiro en ${CONFIG.direccion}`);
-  L.push(`⏰ *Hora aprox.:* ${horaTexto()}`);
+  if(horaModo()==="prog"){
+    L.push(`🗓️ *Reserva:* ${diaLargo($("resDia").value)} a las ${$("resHora").value} hrs`);
+    L.push(`Me gustaría ${entrega()==="delivery" ? "recibir" : "retirar"} mi pedido el *${diaLargo($("resDia").value)}* a las *${$("resHora").value} hrs*. ¿Es posible?`);
+  } else L.push(`⏰ *Hora aprox.:* ${horaTexto()}`);
   L.push("", "*Detalle:*");
   cart.forEach(l => { L.push(`• ${l.q} x ${l.nombre} - ${clp(l.q*l.precio)}`); if(l.detalle) l.detalle.split("; ").forEach(d => L.push(`   ↳ ${d}`)); });
   L.push("", `Subtotal: ${clp(t.subtotal)}`);
@@ -790,6 +825,14 @@ function validate(){
   if(!$("nombre").value.trim()) return "Escribe tu nombre.";
   if(entrega()==="delivery" && !$("direccion").value.trim()) return "Escribe la dirección de entrega.";
   if(entrega()==="delivery" && !CONFIG.deliveryDisponible) return "El delivery no está disponible. Elige retiro.";
+  if(horaModo()==="prog"){
+    const dia = $("resDia").value, hm = $("resHora").value;
+    if(!dia) return "Elige el día de tu reserva.";
+    if(!hm) return "Elige la hora aproximada de tu reserva.";
+    if(dia < isoHoy()) return "La fecha de la reserva ya pasó. Elige hoy o un día futuro.";
+    if(dia > isoHoy(60)) return "Puedes reservar con hasta 60 días de anticipación.";
+    if(dia === isoHoy()){ const [h,m] = hm.split(":").map(Number), t = new Date(); t.setHours(h, m, 0, 0); if(t.getTime() < Date.now() + 45*60000) return "Para hoy, elige una hora al menos 45 minutos desde ahora."; }
+  }
   if(!pago()) return "Elige cómo vas a pagar.";
   const v = Number($("vuelto").value.replace(/\D/g,""));
   if(pago()==="efectivo" && v && v < totals().total) return "El monto en efectivo es menor que el total del pedido.";
@@ -821,7 +864,10 @@ $("copyBank").addEventListener("click", async () => {
 });
 
 function horaModo(){ const h = document.querySelector('input[name="hora"]:checked'); return h ? h.value : "asap"; }
-function horaTexto(){ return horaModo()==="prog" ? "Quiero reservar una hora (coordinar por WhatsApp)" : "Lo antes posible (mín. 45 min aprox.)"; }
+function horaTexto(){ return horaModo()==="prog" ? `Reserva para el ${diaLargo($("resDia").value)} a las ${$("resHora").value} hrs` : "Lo antes posible (mín. 45 min aprox.)"; }
+function isoHoy(off = 0){ const d = new Date(); d.setDate(d.getDate() + off); return d.getFullYear() + "-" + String(d.getMonth()+1).padStart(2,"0") + "-" + String(d.getDate()).padStart(2,"0"); }
+function diaLargo(iso){ if(!iso) return ""; const [y,m,d] = iso.split("-").map(Number); return new Date(y, m-1, d).toLocaleDateString("es-CL", { weekday:"long", day:"numeric", month:"long" }); }
+function prepararReserva(){ const di = $("resDia"); di.min = isoHoy(); di.max = isoHoy(60); if(!di.value) di.value = isoHoy(); }
 function fillSlots(){
   const sel = $("horaSel"), prev = sel.value;
   const toMin = s => { const [h,m] = s.split(":").map(Number); return h*60 + m; };
@@ -840,7 +886,9 @@ $("closeSheet").addEventListener("click", () => $("menu").scrollIntoView({behavi
 if("IntersectionObserver" in window){
   new IntersectionObserver(es => { ckVisible = es[0].isIntersecting; update(); }, {threshold:0}).observe(sheet);
 }
-document.querySelectorAll('input[name="hora"]').forEach(r => r.addEventListener("change", () => { fillSlots(); update(); }));
+document.querySelectorAll('input[name="hora"]').forEach(r => r.addEventListener("change", () => { fillSlots(); prepararReserva(); update(); }));
+prepararReserva();
+["resDia","resHora"].forEach(k => $(k).addEventListener("input", () => { $("error").textContent = ""; }));
 fillSlots();
 document.querySelectorAll('input[name="entrega"],input[name="pago"]').forEach(r => r.addEventListener("change", update));
 ["nombre","telefono","direccion"].forEach(k => $(k).value = storeGet("nagoya_"+k));
@@ -1099,7 +1147,12 @@ if (firebaseConfig.apiKey === "PEGA_AQUI") {
   const hh = ms => new Date(ms).toLocaleTimeString("es-CL", { hour: "2-digit", minute: "2-digit" });
   const msDe = p => p.creado && p.creado.toMillis ? p.creado.toMillis() : Date.now();
   const hoyA = hm => { const [h, m] = String(hm).split(":").map(Number); const d = new Date(); d.setHours(h, m, 0, 0); return d.getTime(); };
-  const objetivo = p => p.horaAcordada ? hoyA(p.horaAcordada) : (p.hora === "asap" ? msDe(p) + 45 * 60000 : Infinity);
+  const isoDe = ms => { const d = new Date(ms); return d.getFullYear() + "-" + String(d.getMonth()+1).padStart(2,"0") + "-" + String(d.getDate()).padStart(2,"0"); };
+  const enFecha = (iso, hm) => { const [y, mo, d] = iso.split("-").map(Number), [h, mi] = String(hm || "23:59").split(":").map(Number); return new Date(y, mo-1, d, h, mi).getTime(); };
+  const diaDe = p => p.diaAcordado || p.reservaDia || isoDe(msDe(p));
+  const horaDe = p => p.horaAcordada || p.reservaHora || "";
+  const objetivo = p => horaDe(p) ? enFecha(diaDe(p), horaDe(p)) : (p.hora === "asap" ? msDe(p) + 45 * 60000 : enFecha(diaDe(p), "23:59"));
+  const diaCorto = iso => { const [y, m, d] = iso.split("-").map(Number); return new Date(y, m-1, d).toLocaleDateString("es-CL", { weekday: "long", day: "numeric", month: "short" }); };
   const waTel = t => { let d = String(t || "").replace(/\D/g, ""); if (d.length === 9 && d.startsWith("9")) d = "56" + d; return d; };
 
   function escucharPedidos() {
@@ -1115,37 +1168,63 @@ if (firebaseConfig.apiKey === "PEGA_AQUI") {
   }
   setInterval(() => { if (user) pintarPedidos(); }, 60000);
 
+  function tarjeta(p, ahora) {
+    const c = msDe(p), min = Math.max(0, Math.round((ahora - c) / 60000)), obj = objetivo(p), tarde = ahora > obj;
+    const tel = String(p.telefono || ""), wt = waTel(tel), res = p.hora === "prog";
+    const deliv = Math.max(0, (p.total || 0) - (p.subtotal || 0));
+    const recibido = isoDe(c) === isoDe(ahora) ? `hoy ${hh(c)}` : `${diaCorto(isoDe(c))} ${hh(c)}`;
+    return `<li class="pa${tarde ? " tarde" : ""}">
+      <div class="pa-top"><strong>#${esc(p.num || "")}</strong><span>Recibido ${recibido}${min < 600 ? ` · hace ${min} min` : ""}</span></div>
+      <div class="pa-badges">
+        <span>${p.entrega === "delivery" ? "🛵 Delivery" : "🏪 Retiro"}</span>
+        <span>💳 ${esc(PAGO_TXT[p.pago] || p.pago || "")}</span>
+        ${res ? `<span class="res">🗓️ Reserva</span>` : `<span>⏰ Lo antes posible</span>`}
+        ${tarde ? `<span class="tag-off">Atrasado</span>` : ""}
+      </div>
+      <div class="pa-hora">
+        ${res ? `<span>Pidió: <strong>${p.reservaDia ? esc(diaCorto(p.reservaDia)) : "sin fecha"}${p.reservaHora ? " · " + esc(p.reservaHora) + " hrs" : ""}</strong></span>`
+              : `<span>Listo aprox. <strong>${hh(c + 45 * 60000)}</strong></span>`}
+        <label>Día acordado <input type="date" data-a="dia" data-id="${p.id}" value="${esc(p.diaAcordado || p.reservaDia || "")}"></label>
+        <label>Hora acordada <input type="time" data-a="hora" data-id="${p.id}" value="${esc(p.horaAcordada || p.reservaHora || "")}"></label>
+      </div>
+      <div>👤 <strong>${esc(p.nombre || "")}</strong>${tel ? ` · 📞 <a href="tel:${esc(tel)}">${esc(tel)}</a>` : ""}${wt ? ` · <a href="https://wa.me/${wt}" target="_blank" rel="noopener">WhatsApp</a>` : ""}</div>
+      ${p.entrega === "delivery" ? `<div>📍 ${esc(p.direccion || "")}</div>` : ""}
+      <div class="pa-det">${(p.items || []).map(l => `<div class="ln"><span>${l.q} × ${esc(l.nombre)}${l.detalle ? `<small>${esc(l.detalle).split("; ").join("<br>")}</small>` : ""}</span><span>${clp(l.q * l.precio)}</span></div>`).join("")}</div>
+      ${p.comentarios ? `<div class="pa-com">📝 ${esc(p.comentarios)}</div>` : ""}
+      <div class="pa-tot">
+        <div class="ln"><span>Subtotal</span><span>${clp(p.subtotal || 0)}</span></div>
+        ${p.entrega === "delivery" ? `<div class="ln"><span>Delivery</span><span>${clp(deliv)}</span></div>` : ""}
+        <div class="ln t"><span>Total</span><span>${clp(p.total || 0)}</span></div>
+        ${p.vuelto ? `<div class="ln"><span>Paga con</span><span>${clp(Number(p.vuelto))} (vuelto ${clp(Math.max(0, Number(p.vuelto) - (p.total || 0)))})</span></div>` : ""}
+      </div>
+      <div class="pa-foot"><span>⭐ ${p.puntos || 0} NagoyaPuntos · ${p.clienteUid ? "cliente con cuenta" : "sin cuenta (no suma)"}</span></div>
+      <div class="acts"><button type="button" class="okb" data-a="ok" data-id="${p.id}">✓ Completar${p.clienteUid && p.puntos ? ` y otorgar ${p.puntos} pts` : ""}</button>
+        <button type="button" class="danger" data-a="cancel" data-id="${p.id}">✕ Cancelar / rechazar</button></div>
+    </li>`;
+  }
+
   function pintarPedidos() {
     const n = pedAct.length;
     document.title = (n ? `(${n}) ` : "") + document.title.replace(/^\(\d+\) /, "");
     const el = $("admPedidos"); if (!el) return;
     if (pedErr) { el.innerHTML = `<p class="bmsg err">No se pudieron leer los pedidos (${esc(pedErr)}). Revisa las reglas de Firestore.</p>`; return; }
+    const ahora = Date.now(), hoyIso = isoDe(ahora), mananaIso = isoDe(ahora + 86400000);
     const lista = [...pedAct].sort((a, b) => objetivo(a) - objetivo(b) || msDe(a) - msDe(b));
+    const grupos = new Map();
+    lista.forEach(p => { const k = isoDe(objetivo(p)); const g = k < hoyIso ? "0-atras" : k; if (!grupos.has(g)) grupos.set(g, []); grupos.get(g).push(p); });
+    const nHoy = (grupos.get(hoyIso) || []).length, nFut = lista.filter(p => isoDe(objetivo(p)) > hoyIso).length;
     const porCobrar = pedAct.reduce((a, p) => a + (p.total || 0), 0);
     const comp = pedHoy.filter(p => p.estado === "completado"), canc = pedHoy.filter(p => p.estado === "cancelado");
-    const ahora = Date.now();
+    const titulo = k => k === "0-atras" ? "⚠️ Atrasados de días anteriores" : k === hoyIso ? "Hoy" : k === mananaIso ? `Mañana · ${diaCorto(k)}` : diaCorto(k).replace(/^./, x => x.toUpperCase());
     el.innerHTML = `
-      <div class="pa-sum"><span><strong>${n}</strong> pedido${n === 1 ? "" : "s"} activo${n === 1 ? "" : "s"}</span>
+      <div class="pa-sum"><span><strong>${nHoy}</strong> para hoy</span><span><strong>${nFut}</strong> para otros días</span>
         <span>Por cobrar: <strong>${clp(porCobrar)}</strong></span>
         <span>Hoy: ${comp.length} completado${comp.length === 1 ? "" : "s"} (${clp(comp.reduce((a, p) => a + (p.total || 0), 0))}) · ${canc.length} cancelado${canc.length === 1 ? "" : "s"}</span></div>
-      ${n ? `<ul class="pa-list">${lista.map(p => {
-        const c = msDe(p), min = Math.max(0, Math.round((ahora - c) / 60000)), obj = objetivo(p), tarde = obj !== Infinity && ahora > obj;
-        const tel = String(p.telefono || ""), wt = waTel(tel);
-        return `<li class="pa${tarde ? " tarde" : ""}">
-          <div class="pa-top"><strong>#${esc(p.num || "")}</strong><span>Recibido ${hh(c)} · hace ${min} min</span></div>
-          <div class="pa-hora">${p.hora === "asap"
-              ? `<span>⏰ Lo antes posible · listo aprox. <strong>${hh(c + 45 * 60000)}</strong></span>`
-              : `<span>⏰ <strong>Quiere reservar hora</strong> (coordinar por WhatsApp)</span>`}
-            <label>Hora acordada <input type="time" data-a="hora" data-id="${p.id}" value="${esc(p.horaAcordada || "")}"></label>
-            ${tarde ? `<span class="tag-off">Atrasado</span>` : ""}</div>
-          <div>👤 <strong>${esc(p.nombre || "")}</strong>${tel ? ` · 📞 <a href="tel:${esc(tel)}">${esc(tel)}</a>` : ""}${wt ? ` · <a href="https://wa.me/${wt}" target="_blank" rel="noopener">WhatsApp</a>` : ""}</div>
-          <div>${p.entrega === "delivery" ? `🛵 Delivery · ${esc(p.direccion || "")}` : "🏪 Retiro en el local"} · 💳 ${esc(PAGO_TXT[p.pago] || p.pago || "")}${p.vuelto ? ` (paga con ${clp(Number(p.vuelto))})` : ""}</div>
-          <ul>${(p.items || []).map(l => `<li>${l.q} × ${esc(l.nombre)} — ${clp(l.q * l.precio)}${l.detalle ? `<small>${esc(l.detalle).split("; ").join("<br>")}</small>` : ""}</li>`).join("")}</ul>
-          ${p.comentarios ? `<div class="pa-com">📝 ${esc(p.comentarios)}</div>` : ""}
-          <div class="pa-foot"><strong>${clp(p.total || 0)}</strong><span>⭐ ${p.puntos || 0} NagoyaPuntos · ${p.clienteUid ? "cliente con cuenta" : "sin cuenta (no suma puntos)"}</span></div>
-          <div class="acts"><button type="button" class="okb" data-a="ok" data-id="${p.id}">✓ Completar${p.clienteUid && p.puntos ? ` y otorgar ${p.puntos} pts` : ""}</button>
-            <button type="button" class="danger" data-a="cancel" data-id="${p.id}">✕ Cancelar / rechazar</button></div>
-        </li>`; }).join("")}</ul>` : `<p class="hint">No hay pedidos activos. Los nuevos aparecen aquí al instante.</p>`}`;
+      ${n ? [...grupos.keys()].sort().map(k => `
+        <h4 class="pa-dia${k === "0-atras" ? " atras" : ""}">${titulo(k)} <span>${grupos.get(k).length} pedido${grupos.get(k).length === 1 ? "" : "s"}</span></h4>
+        ${grupos.get(k).length > 1 ? `<p class="pa-swipe">Desliza para ver todos →</p>` : ""}
+        <ul class="pa-list">${grupos.get(k).map(p => tarjeta(p, ahora)).join("")}</ul>`).join("")
+        : `<p class="hint">No hay pedidos activos. Los nuevos aparecen aquí al instante.</p>`}`;
     el.onclick = async e => {
       const b = e.target.closest("button[data-a]"); if (!b) return;
       const p = pedAct.find(x => x.id === b.dataset.id); if (!p) return;
@@ -1168,9 +1247,10 @@ if (firebaseConfig.apiKey === "PEGA_AQUI") {
       } catch (er) { b.disabled = false; alert("No se pudo actualizar el pedido (" + (er.code || er.message) + ")."); }
     };
     el.onchange = async e => {
-      const i = e.target.closest('input[data-a="hora"]'); if (!i) return;
-      try { await updateDoc(doc(db, "pedidos", i.dataset.id), { horaAcordada: i.value }); }
-      catch (er) { alert("No se pudo guardar la hora (" + (er.code || er.message) + ")."); }
+      const i = e.target.closest('input[data-a]'); if (!i) return;
+      const campo = i.dataset.a === "dia" ? "diaAcordado" : "horaAcordada";
+      try { await updateDoc(doc(db, "pedidos", i.dataset.id), { [campo]: i.value }); }
+      catch (er) { alert("No se pudo guardar (" + (er.code || er.message) + ")."); }
     };
   }
 
@@ -1389,6 +1469,8 @@ document.getElementById("send").addEventListener("click", e => {
     items: p.items.slice(0, 60).map(l => ({ nombre: String(l.nombre).slice(0, 120), detalle: String(l.detalle || "").slice(0, 400), precio: Math.round(Number(l.precio) || 0), q: Math.round(Number(l.q) || 1) })),
     subtotal: Math.round(p.subtotal), total: Math.round(p.total),
     entrega: p.entrega, direccion: p.direccion, hora: p.hora || "asap", pago: p.pago, vuelto: p.vuelto,
+    reservaDia: p.hora === "prog" ? String(document.getElementById("resDia").value || "").slice(0, 10) : "",
+    reservaHora: p.hora === "prog" ? String(document.getElementById("resHora").value || "").slice(0, 5) : "",
     nombre: p.nombre, telefono: p.telefono, comentarios: p.comentarios,
     puntos: Math.floor(Math.round(p.subtotal) / 100),
     clienteUid: userC ? userC.uid : null, estado: "activo", creado: serverTimestamp()
@@ -1440,7 +1522,37 @@ function pedidosHTML(){
   }).join("")}</ul>`;
 }
 
-function render(){
+function render(){ renderBox(); renderHero(); }
+
+// ---- Botones de cuenta en la portada: llevan a "Tu cuenta" abierta en el paso correcto ----
+const hero = document.getElementById("cuentaHero");
+function renderHero(){
+  if (!hero) return;
+  hero.hidden = !listo;
+  if (!listo) return;
+  if (!userC) {
+    hero.innerHTML = `<button type="button" class="hc-main" data-h="login">👤 Iniciar sesión</button>
+      <button type="button" class="hc-sec" data-h="registro">Crear cuenta</button>
+      <span class="hc-txt">y junta ⭐ NagoyaPuntos</span>`;
+  } else if (modo === "completar") {
+    hero.innerHTML = `<button type="button" class="hc-main" data-h="ver">Completa tu cuenta</button>`;
+  } else {
+    const nombre = userC.displayName || (userC.email || "").split("@")[0];
+    const saldo = (perfil && perfil.puntos) || 0;
+    hero.innerHTML = `<span class="hc-txt">Hola, <strong>${esc(nombre)}</strong> · ⭐ <strong>${saldo}</strong> NagoyaPuntos</span>
+      <button type="button" class="hc-main" data-h="pedidos">🔁 Mis pedidos / repetir</button>`;
+  }
+}
+if (hero) hero.addEventListener("click", e => {
+  const b = e.target.closest("[data-h]"); if (!b) return;
+  const h = b.dataset.h; aviso = ""; avisoErr = false;
+  if (h === "login" || h === "registro") { modo = h; render(); }
+  else if (h === "pedidos") { pedAbierto = true; cargarPedidos(); }
+  box.scrollIntoView({ behavior: "smooth", block: "start" });
+  setTimeout(() => { const f = document.getElementById("cMail"); if (f) f.focus({ preventScroll: true }); }, 450);
+});
+
+function renderBox(){
   box.hidden = !listo;
   if (!listo) return;
   const msg = aviso ? `<p class="bmsg ${avisoErr ? "err" : ""}" role="status">${esc(aviso)}</p>` : "";
