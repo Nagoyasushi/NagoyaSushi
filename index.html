@@ -1248,12 +1248,19 @@ if (firebaseConfig.apiKey === "PEGA_AQUI") {
     };
   }
 
+  // Solo la cuenta del local puede usar el panel (mismo UID que en las reglas de Firestore)
+  const ADMIN_UID = "EC4LDwDNvZMPeAKMFO2Kxom9afu2";
+  let noAdmin = false;
   onAuthStateChanged(auth, u => {
+    if (u && u.uid !== ADMIN_UID) {          // es una cuenta de cliente: se rechaza y se cierra esa sesión
+      noAdmin = true; signOut(auth).catch(() => {}); u = null;
+    }
     user = u; aplicarEstado(); escucharPedidos();
     if (stopAdmin) { stopAdmin(); stopAdmin = null; }
     if (u) stopAdmin = onSnapshot(col, snap => { todas = leer(snap); if (!$("adminBox").hidden) renderList(); },
       err => { estado = "Error al leer (administrador): " + err.code; pintarEstado(); });
     if (!$("adminBox").hidden) renderAdmin();
+    if (noAdmin && !user) { const er = $("admErr"); if (er) er.textContent = "Esta cuenta no tiene acceso de administrador."; noAdmin = false; }
   });
 
   function compress(file) {
