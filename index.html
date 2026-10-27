@@ -782,8 +782,10 @@ function update(){
   pm.innerHTML = `⭐ Con esta compra juntarás <strong>${pts} NagoyaPuntos</strong>`;
   if(window.promoCounts) window.promoCounts();
 }
-/* NagoyaPuntos: 1 punto por cada $100 de productos (no cuenta el delivery) */
-function puntosDe(monto){ return Math.floor((Number(monto) || 0) / 100); }
+/* NagoyaPuntos: 1 punto por cada $1.000 de productos (no cuenta el delivery).
+   Si cambias este valor, cambia también el 1000 en las reglas de Firestore (pedidoValido). */
+const PESOS_POR_PUNTO = 1000;
+function puntosDe(monto){ return Math.floor((Number(monto) || 0) / PESOS_POR_PUNTO); }
 
 function buildMessage(){
   const t = totals(), num = (window.pedidoNum = Date.now().toString().slice(-5)), L = [];
@@ -1472,7 +1474,7 @@ document.getElementById("send").addEventListener("click", e => {
     reservaDia: p.hora === "prog" ? String(document.getElementById("resDia").value || "").slice(0, 10) : "",
     reservaHora: p.hora === "prog" ? String(document.getElementById("resHora").value || "").slice(0, 5) : "",
     nombre: p.nombre, telefono: p.telefono, comentarios: p.comentarios,
-    puntos: Math.floor(Math.round(p.subtotal) / 100),
+    puntos: puntosDe(Math.round(p.subtotal)),
     clienteUid: userC ? userC.uid : null, estado: "activo", creado: serverTimestamp()
   };
   addDoc(collection(dbC, "pedidos"), d)
